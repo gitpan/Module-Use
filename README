@@ -3,11 +3,11 @@ NAME
 
 SYNOPSIS
     Perl
-      use Module::Use (Logger => "Debug");
+      use Module::Use (Counting, Logger => "Debug");
 
     mod_perl
       <Perl>
-      use Module::Use (Logger => "Debug");
+      use Module::Use (Counting, Logger => "Debug");
       </Perl>
 
       PerlChildExitHandler Module::Use
@@ -24,11 +24,18 @@ DESCRIPTION
     when and how often logging should take place.
 
 OPTIONS
-    The following options are available when `use'ing this module.
+    The following options are available when "use"ing this module.
 
     Count
         This is the number of times a module has been used for it to be
         automatically loaded.
+
+    Counting
+        This indicates that the number of times a module is "require"d
+        should be tracked. This option takes no arguments.
+
+        N.B.: This will tie %INC. This may not work. Don't use if it
+        doesn't.
 
     Decay
         This number is subtracted from the count of all modules that are in
@@ -44,22 +51,23 @@ OPTIONS
         This is the logging module to use. Configuration is specific to the
         module chosen. Please see the documentation for the module.
 
-        The module name is `Module::Use::Logger' with `Logger' replaced with
+        The module name is "Module::Use::Logger" with "Logger" replaced with
         the value of this option.
 
     Percentage
         The percentage of total module loads is used in the same manner as
-        the `Count'. If both `Percentage' and `Count' are given, the one
+        the "Count". If both "Percentage" and "Count" are given, the one
         with the greater counts is used.
 
 SEE ALSO
-    the Module::Use::Debug manpage, the Module::Use::DB_FileLock manpage.
+    the Module::Use::Debug manpage, the Module::Use::DB_FileLock manpage,
+    Section 17.7 of _mod_perl Developer's Cookbook_.
 
 AUTHOR
-    James G. Smith <jgsmith@jamesmith.com>
+    James G. Smith <jsmith@cpan.org>
 
 COPYRIGHT
-    Copyright (C) 2001 James G. Smith
+    Copyright (C) 2002 Texas A&M University. All Rights Reserved.
 
     Released under the same license as Perl itself.
 

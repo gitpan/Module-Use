@@ -2,12 +2,140 @@ package Module::Use;
 
 require 5.005;
 use Tie::Hash;
-use base qw(Tie::StdHash);
+#use Tie::StdHash;
 use Carp;
 use strict;
-use vars qw($VERSION %noargs %counts %config $_object);
+use vars qw($VERSION %noargs %counts %config $_object @ISA);
 
-$VERSION = 0.05;
+@ISA = qw(Tie::StdHash);
+
+$VERSION = 0.05_01;
+
+@noargs{
+    qw(Counting)
+}  = ( );
+
+sub FETCH {
+    $counts{$_[1]}++ if defined $_[0] -> {$_[1]};
+    warn "Fetching $_[1]\n";
+    $_[0] -> {$_[1]};
+}
+
+sub STORE {
+    $counts{$_[1]}++;
+    warn "Storing $_[1]\n";
+    $_[0] -> {$_[1]} = $_[2];
+}
+
+sub import { 
+    my($self, @config) = @_;
+
+    croak "@{[ref $self]} not intended to be instanced" if ref $self;
+
+    my $op;
+    while(@config) {
+        $op = shift @config;
+        if(exists $noargs{$op}) {
+	    $config{$op} = 1;
+	} else {
+	    $config{$op} = shift @config;
+	}
+    }
+
+    # load logging module - defines Module::Use::log
+    if(defined $config{Logger}) {
+	eval qq{require Module::Use::$config{Logger}};
+        croak "Unable to load logger: $@" if $@;
+    }
+
+    if($ENV{'MOD_PERL'}) {
+        $config{log_at_end} = 0;
+    } else {
+        $config{log_at_end} = 1;
+    }
+
+    if($config{"Counting"}) {
+      tie %INC, $self;
+
+      $_object = tied %INC;
+    } else {
+      $_object = bless { }, $self;
+    }
+
+    my($modules) = $_object -> query_modules();
+    eval "require $_" for @{$modules};
+}
+
+sub query_modules {
+    my($self) = shift;
+
+    return unless $self -> can('_query_modules');
+
+    my $hash = $self -> _query_modules();
+
+    my @keys = keys %{$hash};
+    my $total = 0;
+
+    local($_);  # JIC
+
+    $total += $hash->{$_} for @keys;
+
+    my $p = 0;
+    if($self -> {Percentage}) {
+        $p = $self -> {Percentage} * $total / 100.;
+    }
+    if($self -> {Count}) {
+        if($p < $self -> {Count}) {
+            $p = $self -> {Count};
+        }
+    }
+
+    my $l;    
+    if($self -> {Limit}) {
+        $l = $self -> {Limit};
+    } else {
+        $l = scalar(@keys);
+    }
+
+    @keys = sort { $hash->{$a} <=> $hash->{$b} } @keys;
+
+    $#keys = $l-1 if $l;
+
+
+    @keys = grep { $hash->{$_} > $p } @keys if $p;   # could do a binary search at this point
+
+    @keys = map s{\.pm$}{}, map s{/}{::}, @keys;
+                         
+    return \@keys;
+}
+
+sub _process_INC {
+    if($config{"Counting"}) {
+        return grep {    $_ !~ m{^Module/Use(/|\.pm)?} 
+                      && $_ !~ m{^[a-z/]} 
+                    } keys %counts;
+    } else {
+	return grep {    $_ !~ m{^Module/Use(/|\.pm)?}
+			      && $_ !~ m{^[a-z/]}
+                    } keys %INC;
+    }
+}
+
+sub handler {
+    no strict qw(subs);
+
+    $_object -> log(_process_INC()) if $_object -> can("log");
+    return Apache::Constants::OK;
+}
+
+END {
+    # now log %INC
+    $_object -> log(_process_INC()) if $config{log_at_end} && $_object -> can("log");
+}
+
+1;
+
+__END__
 
 =head1 NAME
 
@@ -58,6 +186,8 @@ This is the number of times a module has been used for it to be automatically lo
 This indicates that the number of times a module is C<require>d should be
 tracked.  This option takes no arguments.
 
+N.B.: This will tie %INC.  This may not work.  Don't use if it doesn't.
+
 =item Decay
 
 This number is subtracted from the count of all modules that are in the
@@ -87,130 +217,15 @@ C<Count> are given, the one with the greater counts is used.
 
 =head1 SEE ALSO
 
-L<Module::Use::Debug>, L<Module::Use::DB_FileLock>.
+L<Module::Use::Debug>, L<Module::Use::DB_FileLock>, Section 17.7 of _mod_perl Developer's Cookbook_.
 
 =head1 AUTHOR
 
-James G. Smith <jgsmith@jamesmith.com>
+James G. Smith <jsmith@cpan.org>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2001 James G. Smith
+Copyright (C) 2002 Texas A&M University.  All Rights Reserved.
 
 Released under the same license as Perl itself.
 
-=cut
-
-
-# actual implementation:
-
-@noargs{
-    qw(Counting)
-}  = ( );
-
-sub FETCH {
-    $counts{$_[1]}++ if defined $_[0] -> {$_[1]};
-    $_[0] -> {$_[1]};
-}
-
-sub STORE {
-    $counts{$_[1]}++;
-    print "Storing $_[1]\n";
-    $_[0] -> {$_[1]} = $_[2];
-}
-
-sub import { 
-    my($self, @config) = @_;
-
-    croak "@{[ref $self]} not intended to be instanced" if ref $self;
-
-    my $op;
-    while(@config) {
-        $op = shift @config;
-        if(exists $noargs{$op}) {
-	    $config{$op} = 1;
-	} else {
-	    $config{$op} = shift @config;
-	}
-    }
-
-    # load logging module - defines Module::Use::log
-    if(defined $config{Logger}) {
-	eval qq{require Module::Use::$config{Logger}};
-        croak "Unable to load logger: $@" if $@;
-    }
-
-    if(defined $INC{'Apache.pm'}) {
-        $config{log_at_end} = 0;
-    } else {
-        $config{log_at_end} = 1;
-    }
-
-    tie %INC, $self;
-
-    $_object = tied %INC;
-
-    if($_object -> can('_query_modules')) {
-        my($modules) = $_object -> query_modules();
-        require($_) for @{$modules};
-    }
-}
-
-sub query_modules {
-    my($self) = shift;
-
-    my $hash = $self -> _query_modules();
-
-    my @keys = keys %{$hash};
-    my $total = 0;
-
-    local($_);  # JIC
-
-    $total += $hash->{$_} for @keys;
-
-    my $p = 0;
-    if($self -> {Percentage}) {
-        $p = $self -> {Percentage} * $total / 100.;
-    }
-    if($self -> {Count}) {
-        if($p < $self -> {Count}) {
-            $p = $self -> {Count};
-        }
-    }
-
-    my $l;    
-    if($self -> {Limit}) {
-        $l = $self -> {Limit};
-    } else {
-        $l = scalar(@keys);
-    }
-
-    @keys = sort { $hash->{$a} <=> $hash->{$b} } @keys;
-
-    $#keys = $l-1 if $l;
-
-
-    @keys = grep { $hash->{$_} > $p } @keys if $p;   # could do a binary search at this point
-                         
-    return \@keys;
-}
-
-sub _process_INC {
-    return grep {    $_ !~ m{^Module/Use(/|\.pm)?} 
-                  && $_ !~ m{^[a-z/]} 
-                } keys %counts;
-}
-
-sub handler {
-    no strict qw(subs);
-
-    $_object -> log(_process_INC()) if $_object -> can("log");
-    return Apache::Constants::OK;
-}
-
-END {
-    # now log %INC
-    $_object -> log(_process_INC()) if $config{log_at_end} && $_object -> can("log");
-}
-
-1;

@@ -6,6 +6,21 @@ use vars qw($VERSION);
 $VERSION = 0.04;
 
 
+package Module::Use;
+
+sub log {
+    my($self) = shift;
+
+    # dump to STDERR...
+    print STDERR "Modules used:\n  ", join("\n  ", sort @_), "\n";
+}
+
+sub _query_modules { };
+
+1;
+
+__END__
+
 =head1 NAME
 
 Module::Use::Debug
@@ -28,25 +43,10 @@ L<Module::Use>.
 
 =head1 AUTHOR
 
-James G. Smith <jgsmith@jamesmith.com>
+James G. Smith <jsmith@cpan.org>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2001 James G. Smith
+Copyright (C) 2002 Texas A&M University.  All Rights Reserved.
 
 Released under the same license as Perl itself.
-
-=cut
-
-
-
-package Module::Use;
-
-sub log {
-    my($self) = shift;
-
-    # dump to STDERR...
-    print STDERR "Modules used:\n  ", join("\n  ", sort @_), "\n";
-}
-
-1;

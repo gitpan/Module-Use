@@ -1,3 +1,9 @@
+0.05_1 - Fri Apr 19 10:32:37 CDT 2002
+-------------------------------------
+o Made tie'ing of %INC dependent on the Counting option.  This fixes a
+  buggy situation report by Barrie Slaymaker.
+o added t/load.t for testing
+
 0.05 - Tue Oct  9 14:31:30 CDT 2001
 -----------------------------------
 o missed a few `our'...

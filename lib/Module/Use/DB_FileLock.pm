@@ -5,61 +5,6 @@ use vars qw($VERSION);
 
 $VERSION = 0.04;
 
-
-=head1 NAME
-
-Module::Use::DB_FileLock
-
-=head1 SYNOPSIS
-
-use Module::Use (Logger => 'DB_FileLock', File => '/my/file'[, Flags => $flags, Mode => $mode]);
-
-=head1 DESCRIPTION
-
-C<Module::Use::DB_FileLock> provides a DB File data store for C<Module::Use> via C<Tie::DB_FileLock>.
-
-=head1 OPTIONS
-
-The values for the options correspond directly to the same values used with the C<Tie::DB_FileLock> object.
-
-=over 4
-
-=item File
-
-This is the base for the DB filename.
-
-=item Flags
-
-This is a string representing the read-write mode of the DB file. 
-The default value is O_CREAT | O_RDWR.  Since these need to be specified before
-they are defined, C<Flags> are specified as strings: 
-C<Flags => [qw(O_CREAT O_RDWR)]>.
-
-=item Mode
-
-This is a number representing the filesystem permissions of the DB file.  The default
-is C<0660>.
-
-=back
-
-=head1 SEE ALSO
-
-L<Module::Use>, L<Tie::DB_FileLock>.
-
-=head1 AUTHOR
-
-James G. Smith <jgsmith@jamesmith.com>
-
-=head1 COPYRIGHT
-
-Copyright (C) 2001 James G. Smith
-
-Released under the same license as Perl itself.
-
-=cut
-
-
-
 package Module::Use;
 
 use Tie::DB_FileLock;
@@ -108,3 +53,55 @@ sub _query_modules {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Module::Use::DB_FileLock
+
+=head1 SYNOPSIS
+
+use Module::Use (Logger => 'DB_FileLock', File => '/my/file'[, Flags => $flags, Mode => $mode]);
+
+=head1 DESCRIPTION
+
+C<Module::Use::DB_FileLock> provides a DB File data store for C<Module::Use> via C<Tie::DB_FileLock>.
+
+=head1 OPTIONS
+
+The values for the options correspond directly to the same values used with the C<Tie::DB_FileLock> object.
+
+=over 4
+
+=item File
+
+This is the base for the DB filename.
+
+=item Flags
+
+This is a string representing the read-write mode of the DB file. 
+The default value is O_CREAT | O_RDWR.  Since these need to be specified before
+they are defined, C<Flags> are specified as strings: 
+C<Flags => [qw(O_CREAT O_RDWR)]>.
+
+=item Mode
+
+This is a number representing the filesystem permissions of the DB file.  The default
+is C<0660>.
+
+=back
+
+=head1 SEE ALSO
+
+L<Module::Use>, L<Tie::DB_FileLock>.
+
+=head1 AUTHOR
+
+James G. Smith <jsmith@cpan.org>
+
+=head1 COPYRIGHT
+
+Copyright (C) 2002 Texas A&M University.  All Rights Reserved.
+
+Released under the same license as Perl itself.
