@@ -7,7 +7,7 @@ use Carp;
 use strict;
 use vars qw($VERSION %noargs %counts %config $_object);
 
-$VERSION = 0.04;
+$VERSION = 0.05;
 
 =head1 NAME
 
@@ -125,7 +125,6 @@ sub import {
     croak "@{[ref $self]} not intended to be instanced" if ref $self;
 
     my $op;
-    our %noargs;
     while(@config) {
         $op = shift @config;
         if(exists $noargs{$op}) {
@@ -149,7 +148,7 @@ sub import {
 
     tie %INC, $self;
 
-    our $_object = tied %INC;
+    $_object = tied %INC;
 
     if($_object -> can('_query_modules')) {
         my($modules) = $_object -> query_modules();
@@ -197,8 +196,6 @@ sub query_modules {
 }
 
 sub _process_INC {
-    our %counts;
-    our $_object;
     return grep {    $_ !~ m{^Module/Use(/|\.pm)?} 
                   && $_ !~ m{^[a-z/]} 
                 } keys %counts;

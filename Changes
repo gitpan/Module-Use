@@ -1,3 +1,7 @@
+0.05 - Tue Oct  9 14:31:30 CDT 2001
+-----------------------------------
+o missed a few `our'...
+
 0.04 - Tue Oct  9 12:52:53 CDT 2001
 -----------------------------------
 o removed the `our' declarations since that was the only thing
