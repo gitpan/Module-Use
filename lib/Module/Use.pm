@@ -3,7 +3,7 @@ package Module::Use;
 use Carp;
 use strict;
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 
 
@@ -13,9 +13,23 @@ Module::Use
 
 =head1 SYNOPSIS
 
-use Module::Use (Logger => "DB_FileLock", File => "/www/apache/logs/modules");
+=over 0
 
-use Module::Use (Logger => "Debug");
+=item Perl
+
+  use Module::Use (Logger => "Debug");
+
+=item mod_perl
+
+  <Perl>
+  use Module::Use (Logger => "Debug");
+  </Perl>
+
+  PerlChildExitHandler Module::Use
+  PerlCleanupHandler Module::Use
+  PerlLogHandler Module::Use
+
+=back
 
 =head1 DESCRIPTION
 
@@ -23,6 +37,9 @@ Module::Use will record the modules used over the course of the
 Perl interpreter's lifetime.  If the logging module is able, the 
 old logs are read and frequently used modules are automatically 
 loaded.  Note that no symbols are imported into packages.
+
+Under mod_perl, only one Perl*Handler should be selected, 
+depending on when and how often logging should take place.
 
 =head1 OPTIONS
 
@@ -148,8 +165,10 @@ sub query_modules {
 
 sub handler {
     our $_object;
+    no strict qw(subs);
 
     $_object -> log(grep { $_ !~ m{^Module/Use(/|\.pm)?}; } keys %INC) if $_object -> can("log");
+    return Apache::Constants::OK;
 }
 
 sub DESTROY {

@@ -2,16 +2,26 @@ NAME
     Module::Use
 
 SYNOPSIS
-    use Module::Use (Logger => "DB_FileLock", File =>
-    "/www/apache/logs/modules");
+    Perl
+      use Module::Use (Logger => "Debug");
 
-    use Module::Use (Logger => "Debug");
+    mod_perl
+      <Perl>
+      use Module::Use (Logger => "Debug");
+      </Perl>
+
+      PerlChildExitHandler Module::Use
+      PerlCleanupHandler Module::Use
+      PerlLogHandler Module::Use
 
 DESCRIPTION
     Module::Use will record the modules used over the course of the Perl
     interpreter's lifetime. If the logging module is able, the old logs are
     read and frequently used modules are automatically loaded. Note that no
     symbols are imported into packages.
+
+    Under mod_perl, only one Perl*Handler should be selected, depending on
+    when and how often logging should take place.
 
 OPTIONS
     The following options are available when `use'ing this module.
