@@ -3,7 +3,7 @@ package Module::Use;
 use Carp;
 use strict;
 
-our $VERSION = 0.02;
+our $VERSION = 0.03;
 
 
 
@@ -50,6 +50,15 @@ The following options are available when C<use>ing this module.
 =item Count
 
 This is the number of times a module has been used for it to be automatically loaded.
+
+=item Decay
+
+This number is subtracted from the count of all modules that are in the
+data store but were not loaded.
+
+=item Grow
+
+This number is added to the count of all modules that were loaded.
 
 =item Limit
 
@@ -102,21 +111,32 @@ Released under the same license as Perl itself.
 sub import { 
     my($self, %config) = @_;
 
+    croak "@{[ref $self]} not intended to be instanced" if ref $self;
+
     # load logging module - defines Module::Use::log
     if(defined $config{Logger}) {
         eval("use Module::Use::$config{Logger};");
         croak $@ if $@;
     }
-    our $_object = bless { %config }, __PACKAGE__;
+    our $_object = bless { %config }, $self;
 
-    if($INC{'Apache.pm'}) {
-        $_object -> {log_on_destroy} = 0;
+    my @ikeys = keys %INC;
+
+    @{$_object -> {Ignore}}{@ikeys} = (1) x @ikeys;
+
+    if(defined $INC{'Apache.pm'}) {
+        $_object -> {log_at_end} = 0;
     } else {
-        $_object -> {log_on_destroy} = 1;
+        $_object -> {log_at_end} = 1;
     }
 
     if($_object -> can('_query_modules')) {
-        my @modules = map { s{\.pm$}{} } map { s{/}{::} } ($_object -> query_modules());
+        my(@modules) = $_object -> query_modules();
+        # the foreach loop is probably optional...
+        foreach (@modules) {
+            s{/}{::}g;
+            s{\.pm$}{};
+        }
 	eval("use " . join("; use ", @modules), ";");
         croak $@ if $@;
     }
@@ -155,27 +175,34 @@ sub query_modules {
 
     @keys = sort { $hash->{$a} <=> $hash->{$b} } @keys;
 
-    $#keys = $l if $l;
+    $#keys = $l-1 if $l;
+
 
     @keys = grep { $hash->{$_} > $p } @keys if $p;   # could do a binary search at this point
                          
     return @keys;
 }
 
+sub _process_INC {
+    our $_object;
+    return grep { !defined($_object -> {Ignore} -> {$_}) }
+               (grep { $_ !~ m{^Module/Use(/|\.pm)?} && $_ !~ m{^[a-z/]} } 
+                   keys %INC);
+
+}
 
 sub handler {
     our $_object;
     no strict qw(subs);
 
-    $_object -> log(grep { $_ !~ m{^Module/Use(/|\.pm)?}; } keys %INC) if $_object -> can("log");
+    $_object -> log(_process_INC()) if $_object -> can("log");
     return Apache::Constants::OK;
 }
 
-sub DESTROY {
-    my($self) = shift;
-
+END {
     # now log %INC
-    $self -> log(grep { $_ !~ m{^Module/Use(/|\.pm)?}; } keys %INC) if $self -> {log_on_destroy} && $self -> can("log");
+    our $_object;
+    $_object -> log(_process_INC) if $_object -> {log_at_end} && $_object -> can("log");
 }
 
 1;

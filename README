@@ -30,6 +30,13 @@ OPTIONS
         This is the number of times a module has been used for it to be
         automatically loaded.
 
+    Decay
+        This number is subtracted from the count of all modules that are in
+        the data store but were not loaded.
+
+    Grow
+        This number is added to the count of all modules that were loaded.
+
     Limit
         Do not automatically load more than this many modules.
 

@@ -1,10 +1,8 @@
 package Module::Use::DB_FileLock;
 
-use Tie::DB_FileLock;
-use Carp;
 use strict;
 
-our $VERSION = 0.01;
+our $VERSION = 0.03;
 
 
 =head1 NAME
@@ -31,8 +29,10 @@ This is the base for the DB filename.
 
 =item Flags
 
-This is a string representing the read-write mode of the DB file.  The default
-value is C<rw>.
+This is a string representing the read-write mode of the DB file. 
+The default value is O_CREAT | O_RDWR.  Since these need to be specified before
+they are defined, C<Flags> are specified as strings: 
+C<Flags => [qw(O_CREAT O_RDWR)]>.
 
 =item Mode
 
@@ -61,17 +61,35 @@ Released under the same license as Perl itself.
 
 package Module::Use;
 
+use Tie::DB_FileLock;
+use Carp;
+
+package Module::Use;
+
 sub log {
     my($self) = shift;
 
     my $file = $self -> {File} or croak "No DB file specified";
-    my $flags= $self -> {Flags} || "rw";
+    my $flags= $self -> {Flags} || [ qw{O_CREAT O_RDWR} ];
     my $mode = $self -> {Mode} || 0660;
 
-    tie my %hash, 'Tie::DB_FileLock', $file, $flags, $mode, $DB_BTREE or croak $!;
+    $flags = eval(join("|", @{$flags}));
+
+    my %hash;
+    eval(q{tie %hash, 'Tie::DB_FileLock', $file, $flags, $mode, $DB_BTREE});
+    croak $@ if $@;
+
+    my $grow = $self -> {Grow} || 2;
 
     foreach (@_) {
-        $hash{$_}++;
+        $hash{$_}+= $grow;
+    }
+
+    my @keys = grep { !defined $INC{$_} } keys %hash;
+    my $decay = $self -> {Decay} || 1;
+    foreach (@keys) {
+        $hash{$_} -= $decay;
+        delete $hash{$_} unless $hash{$_};
     }
 }
 
@@ -79,10 +97,14 @@ sub _query_modules {
     my($self) = shift;
 
     my $file = $self -> {File} || croak "No DB file specified";
-    my $flags= $self -> {Flags} || "rw";
+    my $flags= $self -> {Flags} || [ qw(O_CREAT O_RDWR) ];
     my $mode = $self -> {Mode} || 0660;
 
-    tie my %hash, 'Tie::DB_FileLock', $file, $flags, $mode, $DB_BTREE or croak $!;
+    $flags = eval(join("|", @{$flags}));
+
+    my %hash;
+    eval(q{tie %hash, 'Tie::DB_FileLock', $file, $flags, $mode, $DB_BTREE});
+    return { } if $@;
 
     return \%hash;
 }

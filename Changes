@@ -1,0 +1,7 @@
+0.03 - Thu Jul  5 01:42:02 CDT 2001
+-----------------------------------
+o Decay and Grow configurations to help make module set change with 
+  the needs of the scripts.
+o DB_FileLock logger actually works now.
+o Debug logger now sorts the modules before printing.
+o Modules are automatically loaded properly.

@@ -1,6 +1,8 @@
 package Module::Use::Debug;
 
-our $VERSION = 0.01;
+use strict;
+
+our $VERSION = 0.03;
 
 
 =head1 NAME
@@ -43,7 +45,7 @@ sub log {
     my($self) = shift;
 
     # dump to STDERR...
-    print STDERR "Modules used:\n  ", join("\n  ", @_), "\n";
+    print STDERR "Modules used:\n  ", join("\n  ", sort @_), "\n";
 }
 
 1;
