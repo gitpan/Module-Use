@@ -1,11 +1,13 @@
 package Module::Use;
 
+require 5.005;
+use Tie::Hash;
+use base qw(Tie::StdHash);
 use Carp;
 use strict;
+use vars qw($VERSION %noargs %counts %config $_object);
 
-our $VERSION = 0.03;
-
-
+$VERSION = 0.04;
 
 =head1 NAME
 
@@ -17,12 +19,12 @@ Module::Use
 
 =item Perl
 
-  use Module::Use (Logger => "Debug");
+  use Module::Use (Counting, Logger => "Debug");
 
 =item mod_perl
 
   <Perl>
-  use Module::Use (Logger => "Debug");
+  use Module::Use (Counting, Logger => "Debug");
   </Perl>
 
   PerlChildExitHandler Module::Use
@@ -50,6 +52,11 @@ The following options are available when C<use>ing this module.
 =item Count
 
 This is the number of times a module has been used for it to be automatically loaded.
+
+=item Counting
+
+This indicates that the number of times a module is C<require>d should be
+tracked.  This option takes no arguments.
 
 =item Decay
 
@@ -95,50 +102,58 @@ Released under the same license as Perl itself.
 =cut
 
 
-# desired implementation (allows for counting times requested):
-#sub use : immediate {
-#    # if logging module loaded, use it
-#    return &CORE::use(@_);
-#}
-#
-#sub require {
-#    # if logging module loaded, use it
-#    return CORE::require(@_);
-#}
-
 # actual implementation:
 
+@noargs{
+    qw(Counting)
+}  = ( );
+
+sub FETCH {
+    $counts{$_[1]}++ if defined $_[0] -> {$_[1]};
+    $_[0] -> {$_[1]};
+}
+
+sub STORE {
+    $counts{$_[1]}++;
+    print "Storing $_[1]\n";
+    $_[0] -> {$_[1]} = $_[2];
+}
+
 sub import { 
-    my($self, %config) = @_;
+    my($self, @config) = @_;
 
     croak "@{[ref $self]} not intended to be instanced" if ref $self;
 
+    my $op;
+    our %noargs;
+    while(@config) {
+        $op = shift @config;
+        if(exists $noargs{$op}) {
+	    $config{$op} = 1;
+	} else {
+	    $config{$op} = shift @config;
+	}
+    }
+
     # load logging module - defines Module::Use::log
     if(defined $config{Logger}) {
-        eval("use Module::Use::$config{Logger};");
-        croak $@ if $@;
+	eval qq{require Module::Use::$config{Logger}};
+        croak "Unable to load logger: $@" if $@;
     }
-    our $_object = bless { %config }, $self;
-
-    my @ikeys = keys %INC;
-
-    @{$_object -> {Ignore}}{@ikeys} = (1) x @ikeys;
 
     if(defined $INC{'Apache.pm'}) {
-        $_object -> {log_at_end} = 0;
+        $config{log_at_end} = 0;
     } else {
-        $_object -> {log_at_end} = 1;
+        $config{log_at_end} = 1;
     }
 
+    tie %INC, $self;
+
+    our $_object = tied %INC;
+
     if($_object -> can('_query_modules')) {
-        my(@modules) = $_object -> query_modules();
-        # the foreach loop is probably optional...
-        foreach (@modules) {
-            s{/}{::}g;
-            s{\.pm$}{};
-        }
-	eval("use " . join("; use ", @modules), ";");
-        croak $@ if $@;
+        my($modules) = $_object -> query_modules();
+        require($_) for @{$modules};
     }
 }
 
@@ -152,13 +167,11 @@ sub query_modules {
 
     local($_);  # JIC
 
-    foreach (@keys) {
-        $total += $hash->{$_};
-    }
+    $total += $hash->{$_} for @keys;
 
     my $p = 0;
     if($self -> {Percentage}) {
-        $p = $self -> {Percentage} * $total;
+        $p = $self -> {Percentage} * $total / 100.;
     }
     if($self -> {Count}) {
         if($p < $self -> {Count}) {
@@ -180,19 +193,18 @@ sub query_modules {
 
     @keys = grep { $hash->{$_} > $p } @keys if $p;   # could do a binary search at this point
                          
-    return @keys;
+    return \@keys;
 }
 
 sub _process_INC {
+    our %counts;
     our $_object;
-    return grep { !defined($_object -> {Ignore} -> {$_}) }
-               (grep { $_ !~ m{^Module/Use(/|\.pm)?} && $_ !~ m{^[a-z/]} } 
-                   keys %INC);
-
+    return grep {    $_ !~ m{^Module/Use(/|\.pm)?} 
+                  && $_ !~ m{^[a-z/]} 
+                } keys %counts;
 }
 
 sub handler {
-    our $_object;
     no strict qw(subs);
 
     $_object -> log(_process_INC()) if $_object -> can("log");
@@ -201,8 +213,7 @@ sub handler {
 
 END {
     # now log %INC
-    our $_object;
-    $_object -> log(_process_INC) if $_object -> {log_at_end} && $_object -> can("log");
+    $_object -> log(_process_INC()) if $config{log_at_end} && $_object -> can("log");
 }
 
 1;

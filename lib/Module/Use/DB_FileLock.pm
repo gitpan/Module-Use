@@ -1,8 +1,9 @@
 package Module::Use::DB_FileLock;
 
 use strict;
+use vars qw($VERSION);
 
-our $VERSION = 0.03;
+$VERSION = 0.04;
 
 
 =head1 NAME
@@ -76,21 +77,18 @@ sub log {
     $flags = eval(join("|", @{$flags}));
 
     my %hash;
-    eval(q{tie %hash, 'Tie::DB_FileLock', $file, $flags, $mode, $DB_BTREE});
-    croak $@ if $@;
+    tie %hash, 'Tie::DB_FileLock', $file, $flags, $mode, $DB_BTREE;
+    #croak $@ if $@;
 
     my $grow = $self -> {Grow} || 2;
 
-    foreach (@_) {
-        $hash{$_}+= $grow;
-    }
+    $hash{$_} += $grow for(@_);
 
     my @keys = grep { !defined $INC{$_} } keys %hash;
     my $decay = $self -> {Decay} || 1;
-    foreach (@keys) {
-        $hash{$_} -= $decay;
-        delete $hash{$_} unless $hash{$_};
-    }
+
+    $hash{$_} -= $decay for @keys;
+    delete $hash{$_} for grep { $hash{$_} < 1 } @keys;
 }
 
 sub _query_modules {
